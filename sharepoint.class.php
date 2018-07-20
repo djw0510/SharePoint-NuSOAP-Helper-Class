@@ -2,7 +2,7 @@
 // Author: Danny Wenner
 // This class is intended to simplify all other SharePoint integrations by processing input and output in a more friendly manner
 // This file may be used on multiple projects, but the only line that should vary should be the inclusion path for the NuSOAP library
-require_once(__DIR__.'/../hidden-connection-info/site-specific.php');
+require_once('config.php');
 
 class sharepoint {
     public $spRoot;
@@ -389,20 +389,40 @@ class sharepoint {
         return $string;
     }
 
+    // returns an array of image paths present within the provided string
+    function extractImages($source){
+        // the list of file types below is a white-list containing the only currently supported file types
+        if(preg_match_all('/<img\s[^>]*src=[\"\']([^\"\']*\.(jpg|jpeg|gif|png))[\"\'][^>]*>?/i', $source, $match)) // extract image paths from source
+            return $match[1];
+        else
+            return false;
+    }
+    // returns an array of file paths present within the provided string
+    function extractDocuments($source){
+        global $spRoot, $spSiteRoot; // use $spRoot and $spSiteRoot to only extract images requested from the SharePoint CMS to support linking files from other domains
+
+        // the list of file types below is a white-list containing the only currently supported file types
+        //if(preg_match_all('/<a\s[^>]*href=[\"\']([^\"\']*\.(doc|docx|pdf|pps|ppt|csv|xls|zip))[\"\'][^>]*>?/i', $source, $match)) // extract document paths from source // deprecated // worked well but did not support files from other domains
+        if(preg_match_all('/<a\s[^>]*href=[\"\']([^\"\']('.preg_quote($spSiteRoot, '/').'|[^>]*'.preg_quote(str_ireplace($spRoot, '', $spSiteRoot), '/').'[^>]*)*\.(doc|docx|pdf|pps|ppt|pptx|csv|xls|xlsx|zip))[\"\'][^>]*>?/i', $source, $match)) // extract document paths from source // this method supports off-site files
+            return $match[1];
+        else
+            return false;
+    }
+
+    // to make it easier to report errors using a custom function if it is available
+    function logError($errorMsg=NULL, $emailTo=NULL, $emailSubject=NULL){
+        /*if(function_exists('logError'))
+            logError($errorMsg, $emailTo, $emailSubject);
+        else*/
+            error_log($errorMsg);
+    }
+    
     // used to reset class object
     function resetClassObject(){
         foreach($this as $k=>$v){
             if($k != 'spRoot' && $k != 'spSiteRoot' && $k != 'spListsWS' && $k != 'spUser' && $k != 'spPW')
                 $this->$k = null;
         }
-    }
-
-    // to make it easier to report errors using a custom function if it is available
-    function logError($errorMsg=NULL, $emailTo=NULL, $emailSubject=NULL){
-        if(function_exists('logError'))
-            logError($errorMsg, $emailTo, $emailSubject);
-        else
-            error_log($errorMsg);
     }
 }
 ?>
